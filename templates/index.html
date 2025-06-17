@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>מערכת חיזוי שכר דירה</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            direction: rtl;
+            background: linear-gradient(to bottom right, #eaf4ff, #d3e5ff);
+            padding: 40px;
+            margin: 0;
+            overflow-y: visible; /* מאפשר לדרופ-ליסט להיפתח כלפי מטה */
+        }
+        h1 {
+            text-align: center;
+            background-color: #0066cc;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        form {
+            max-width: 700px;
+            background-color: #ffffff;
+            padding: 30px;
+            margin: auto;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        select {
+            position: relative;
+            z-index: 10; /* תיקון לפתיחת הדרופ-ליסט כלפי מטה */
+        }
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .checkbox-group label {
+            font-weight: normal;
+        }
+        .submit, .reset {
+            margin-top: 25px;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 48%;
+        }
+        .submit:hover, .reset:hover {
+            background-color: #0056b3;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+        }
+        h2#prediction {
+            text-align: center;
+            background: #e6f2ff;
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 10px;
+            color: #000;
+        }
+    </style>
+    <script>
+        function clearFormFields() {
+            // נקה שדות
+            document.querySelectorAll('form input[type="text"], form input[type="number"], form textarea').forEach(el => el.value = '');
+            document.querySelectorAll('form input[type="checkbox"]').forEach(el => el.checked = false);
+            document.querySelectorAll('form select').forEach(el => el.selectedIndex = 0);
+            // הסתר את תיבת התוצאה
+            const predictionBox = document.getElementById('prediction');
+            if (predictionBox) {
+                predictionBox.style.display = 'none';
+            }
+        }
+    </script>
+</head>
+<body>
+<h1>🔍 מערכת חיזוי שכר דירה</h1>
+<form method="post" action="/predict">
+    <label>סוג נכס:</label>
+    <select name="property_type" required>
+        <option value="">בחר סוג נכס</option>
+        {% for option in ['דירה', 'דירת גן', 'פנטהאוז', 'גג/דופלקס'] %}
+            <option value="{{ option }}" {% if request.form.property_type == option %}selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+    </select>
+
+    <label>איזור:</label>
+    <select name="neighborhood" required>
+        <option value="">בחר איזור</option>
+        {% for option in ['לב תל אביב החלק הצפוני', 'הצפון הישן החלק הצפוני', 'הצפון הישן החלק המרכזי', 'הצפון החדש החלק הצפוני', 'הצפון החדש החלק הדרומי', 'הגוש הגדול', 'תל ברוך צפון', 'נחלת יצחק', 'המרכז הישן', 'צפון יפו', 'לב יפו', 'יפו ד', 'שפירא', 'פלורנטין', 'נווה שאנן', 'קריית שלום'] %}
+            <option value="{{ option }}" {% if request.form.neighborhood == option %}selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+    </select>
+
+    <label>מספר חדרים:</label>
+    <input type="number" name="room_num" step="0.5" min="1" required value="{{ request.form.room_num or '' }}">
+
+    <label>קומה:</label>
+    <input type="number" name="floor" min="0" required value="{{ request.form.floor or '' }}">
+
+    <label>מתוך קומות:</label>
+    <input type="number" name="total_floors" min="1" required value="{{ request.form.total_floors or '' }}">
+
+    <label>שטח:</label>
+    <input type="number" name="area" min="1" required value="{{ request.form.area or '' }}">
+
+    <label>שטח גינה:</label>
+    <input type="number" name="garden_area" min="0" value="{{ request.form.garden_area or '' }}">
+
+    <label>מספר תמונות:</label>
+    <input type="number" name="num_of_images" min="0" value="{{ request.form.num_of_images or '' }}">
+
+    <label>מרחק מהמרכז (במטרים):</label>
+    <input type="number" name="distance_from_center" min="0" value="{{ request.form.distance_from_center or '' }}">
+
+    <label>ארנונה חודשית:</label>
+    <input type="number" name="monthly_arnona" min="0" value="{{ request.form.monthly_arnona or '' }}">
+
+    <label>ועד בית:</label>
+    <input type="number" name="building_tax" min="0" value="{{ request.form.building_tax or '' }}">
+
+    <label>מספר תשלומים:</label>
+    <input type="number" name="num_of_payments" min="1" value="{{ request.form.num_of_payments or '' }}">
+
+    <label>תיאור הדירה:</label>
+    <textarea name="description" rows="4">{{ request.form.description or '' }}</textarea>
+
+    <label>מאפיינים:</label>
+    <div class="checkbox-group">
+        {% set features = {
+            'has_balcony': 'מרפסת',
+            'elevator': 'מעלית',
+            'has_safe_room': 'ממ״ד',
+            'has_parking': 'חניה',
+            'has_storage': 'מחסן',
+            'has_bars': 'סורגים',
+            'ac': 'מזגן',
+            'is_renovated': 'משופצת',
+            'is_furnished': 'מרוהטת',
+            'handicap': 'גישה לנכים'
+        } %}
+        {% for name, label in features.items() %}
+            <label><input type="checkbox" name="{{ name }}" {% if request.form.get(name) %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+    </div>
+
+    <div class="button-group">
+        <button class="submit" type="submit">חשב שכר דירה</button>
+        <button class="reset" type="button" onclick="clearFormFields()">נקה טופס</button>
+    </div>
+</form>
+
+{% if prediction_text %}
+    <h2 id="prediction">{{ prediction_text }}</h2>
+{% endif %}
+</body>
+</html>
